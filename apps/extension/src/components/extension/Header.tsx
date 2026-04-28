@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { FileText, LogOut, Moon, Sun, User, ExternalLink, Settings, Code } from 'lucide-react';
-import { WEB_URL } from '@/lib/constants';
+import { getWebUrl } from '@/lib/constants';
 import { useDeveloperMode } from '@/hooks/use-developer-mode';
 
 interface HeaderProps {
@@ -19,9 +19,10 @@ interface HeaderProps {
   user: { id: string; email: string; name: string } | null;
   onThemeToggle: () => void;
   onLogout: () => void;
+  onSettingsToggle: () => void;
 }
 
-export function Header({ theme, user, onThemeToggle, onLogout }: HeaderProps) {
+export function Header({ theme, user, onThemeToggle, onLogout, onSettingsToggle }: HeaderProps) {
   const { isDeveloperMode, toggleDeveloperMode } = useDeveloperMode();
 
   const getInitials = (name: string | null | undefined, email: string) => {
@@ -36,8 +37,9 @@ export function Header({ theme, user, onThemeToggle, onLogout }: HeaderProps) {
     return email[0].toUpperCase();
   };
 
-  const openWebApp = () => {
-    chrome.tabs.create({ url: WEB_URL });
+  const openWebApp = async () => {
+    const url = await getWebUrl();
+    chrome.tabs.create({ url });
   };
 
   return (
@@ -54,6 +56,16 @@ export function Header({ theme, user, onThemeToggle, onLogout }: HeaderProps) {
         </div>
         
         <div className="ml-auto flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onSettingsToggle}
+            className="h-8 w-8"
+            title="Settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"

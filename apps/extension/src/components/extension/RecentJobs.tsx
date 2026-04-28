@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExternalLink, Briefcase, RefreshCw, Trash2, MapPin, DollarSign } from 'lucide-react';
 import { SimplePagination } from './SimplePagination';
-import { STORAGE_KEYS, WEB_URL } from '@/lib/constants';
+import { STORAGE_KEYS, getWebUrl } from '@/lib/constants';
 import { makeAuthenticatedRequest } from '@/lib/api';
 import {
   AlertDialog,
@@ -75,10 +75,9 @@ export function RecentJobs({ refreshTrigger }: RecentJobsProps) {
     setIsRefreshingJobs(false);
   };
 
-  const openJobInWebApp = (jobId: string) => {
-    chrome.tabs.create({ 
-      url: `${WEB_URL}/jobs/${jobId}` 
-    });
+  const openJobInWebApp = async (jobId: string) => {
+    const webUrl = await getWebUrl();
+    chrome.tabs.create({ url: `${webUrl}/jobs/${jobId}` });
   };
 
   const handleDeleteClick = (job: any) => {

@@ -6,6 +6,7 @@ import { Header } from '@/components/extension/Header';
 import { QuickAutofill } from '@/components/extension/QuickAutofill';
 import { SaveJobPosting } from '@/components/extension/SaveJobPosting';
 import { RecentJobs } from '@/components/extension/RecentJobs';
+import { Settings } from '@/components/extension/Settings';
 import { STORAGE_KEYS, DEFAULT_THEME } from '@/lib/constants';
 import './globals.css';
 
@@ -30,6 +31,7 @@ export default function App() {
   const [jobsSuccess, setJobsSuccess] = useState('');
   const [user, setUser] = useState<AuthResponse['user'] | null>(null);
   const [jobRefreshTrigger, setJobRefreshTrigger] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     // Load theme preference
@@ -111,14 +113,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header 
+      <Header
         theme={theme}
         user={user}
         onThemeToggle={toggleTheme}
         onLogout={handleLogout}
+        onSettingsToggle={() => setShowSettings(prev => !prev)}
       />
 
-      {!isAuthenticated ? (
+      {showSettings ? (
+        <Settings onBack={() => setShowSettings(false)} />
+      ) : !isAuthenticated ? (
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       ) : (
 
