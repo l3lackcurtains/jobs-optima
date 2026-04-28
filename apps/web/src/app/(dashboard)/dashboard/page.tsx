@@ -459,7 +459,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {recentActivity.map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="mt-0.5 h-2 w-2 rounded-full bg-primary/60 shrink-0 mt-2" />
+                    <div className="mt-2 h-2 w-2 rounded-full bg-primary/60 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium leading-tight">{item.event}</p>
                       {item.description && (

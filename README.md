@@ -17,6 +17,18 @@
 
 Jobs Optima is a self-hostable, AI-powered job search platform that optimizes your resume for ATS systems, tracks applications, scans job boards automatically, and fills applications via a Chrome extension — all in one open-source tool.
 
+## Demo
+
+<p align="center">
+  <img src="docs/assets/jobs-optima-screenshot.png" alt="Jobs Optima Dashboard" width="80%">
+</p>
+
+<p align="center">
+  <video src="docs/assets/jobs-optima-demo.mp4" poster="docs/assets/jobs-optima-screenshot.png" controls playsinline width="80%">
+    Your browser does not support the video tag.
+  </video>
+</p>
+
 ## Why Jobs Optima
 
 Most resume tools charge $29–$50/month and lock you into a single workflow. Jobs Optima is free to self-host, works with multiple AI providers, and covers the full job search loop — from optimizing your resume to tracking where you applied.

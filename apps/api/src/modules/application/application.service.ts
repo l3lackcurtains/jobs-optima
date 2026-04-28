@@ -48,7 +48,19 @@ export class ApplicationService {
       throw new NotFoundException('Job not found or access denied');
     }
 
-    // Check if job already has an application
+    // Validate that the optimizedResumeId belongs to the job's optimizedResumeIds
+    if (
+      !job.optimizedResumeIds.includes(createApplicationDto.optimizedResumeId)
+    ) {
+      throw new BadRequestException(
+        'Selected resume must be one of the optimized resumes for this job',
+      );
+    }
+
+    // If an application already exists for this job, treat the call as a
+    // resume-swap on the existing application instead of erroring. Users
+    // optimize multiple resumes per job and shouldn't have to delete an
+    // application to try a different resume.
     const existingApplication = await this.applicationModel
       .findOne({
         jobId: createApplicationDto.jobId,
@@ -57,18 +69,30 @@ export class ApplicationService {
       .exec();
 
     if (existingApplication) {
-      throw new BadRequestException(
-        'Job already has an application. Each job can only have one application.',
-      );
-    }
+      const newResumeId = createApplicationDto.optimizedResumeId;
+      const isSameResume =
+        existingApplication.optimizedResumeId?.toString() === newResumeId;
 
-    // Validate that the optimizedResumeId belongs to the job's optimizedResumeIds
-    if (
-      !job.optimizedResumeIds.includes(createApplicationDto.optimizedResumeId)
-    ) {
-      throw new BadRequestException(
-        'Selected resume must be one of the optimized resumes for this job',
-      );
+      if (!isSameResume) {
+        existingApplication.optimizedResumeId = newResumeId as any;
+        if (createApplicationDto.baseResumeId) {
+          existingApplication.baseResumeId =
+            createApplicationDto.baseResumeId as any;
+        }
+        existingApplication.timeline.push({
+          timestamp: new Date(),
+          event: 'Resume changed',
+          description: `Switched optimized resume on this application`,
+          status: existingApplication.status,
+        });
+        await existingApplication.save();
+      }
+
+      return existingApplication.populate([
+        'job',
+        'optimizedResume',
+        'baseResume',
+      ]);
     }
 
     // Add initial timeline event

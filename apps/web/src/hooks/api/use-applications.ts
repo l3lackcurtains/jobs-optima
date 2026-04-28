@@ -27,15 +27,22 @@ export const useApplications = (page: number = 1, limit: number = 10, status?: A
 
   const applications = data?.data;
 
-  // Create application
+  // Create application (or swap resume on an existing one — backend treats
+  // a duplicate jobId as a resume swap rather than erroring out).
   const createApplication = useMutation({
     mutationFn: async (data: CreateApplicationData): Promise<Application> => {
       const response = await apiClient.post(API_ENDPOINTS.APPLICATIONS, data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (application) => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
-      toast.success('Application created successfully!');
+      const lastEvent = application?.timeline?.[application.timeline.length - 1];
+      const wasResumeSwap = lastEvent?.event === 'Resume changed';
+      toast.success(
+        wasResumeSwap
+          ? 'Resume switched on existing application'
+          : 'Application created successfully!',
+      );
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to create application');
