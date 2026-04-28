@@ -1,0 +1,82 @@
+name: Extension Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/extension/**'
+      - '!apps/extension/.output/**'
+      - '!apps/extension/README.md'
+      - '!apps/extension/RELEASE.md'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      
+      - name: Install dependencies
+        run: |
+          # Try with frozen lockfile first, fallback to regular install if it fails
+          bun install --frozen-lockfile || bun install
+      
+      - name: Get version from package.json
+        id: version
+        run: |
+          # Read version from package.json
+          VERSION=$(cat apps/extension/package.json | grep '"version"' | head -1 | awk -F'"' '{print $4}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+          
+          # Get build number from commit count
+          BUILD_NUM=$(git rev-list --count HEAD)
+          echo "build_num=$BUILD_NUM" >> $GITHUB_OUTPUT
+          
+          # Create full version with build number
+          FULL_VERSION="${VERSION}-build.${BUILD_NUM}"
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "Full version: $FULL_VERSION"
+      
+      - name: Build extension
+        run: |
+          cd apps/extension
+          bun run build
+      
+      - name: Create ZIP
+        run: |
+          cd apps/extension/.output/chrome-mv3
+          zip -r ../../../../resume-builder-extension-v${{ steps.version.outputs.version }}.zip .
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-ext
+          name: Resume Builder Extension v${{ steps.version.outputs.version }}
+          body: |
+            ## Resume Builder Extension v${{ steps.version.outputs.version }}
+            
+            Build: #${{ steps.version.outputs.build_num }}
+            
+            ### Installation
+            1. Download the ZIP file below
+            2. Extract the contents
+            3. Open Chrome and go to `chrome://extensions/`
+            4. Enable "Developer mode"
+            5. Click "Load unpacked" and select the extracted folder
+            
+            ### Changes
+            See commit history for detailed changes.
+          files: resume-builder-extension-*.zip
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

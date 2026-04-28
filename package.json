@@ -1,0 +1,50 @@
+{
+  "name": "resume-builder",
+  "description": "AI-powered resume optimization platform — optimize resumes for ATS with OpenAI and Claude, track job applications, and autofill forms via Chrome extension.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l3lackcurtains/resume-builder.git"
+  },
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npx nx run-many -t dev --projects=web,api",
+    "dev:all": "npx nx run-many -t dev --projects=web,api",
+    "dev:web": "npx nx dev web",
+    "dev:api": "npx nx dev api",
+    "dev:extension": "npx nx dev extension",
+    "build": "npx nx run-many --target=build --all",
+    "build:web": "npx nx build web",
+    "build:api": "npx nx build api",
+    "build:extension": "npx nx build extension",
+    "start": "npx nx run-many --target=start --projects=web,api",
+    "lint": "npx nx run-many --target=lint --all",
+    "test": "npx nx run-many --target=test --all",
+    "clean": "npx nx reset",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "start:web": "cd apps/web && npm start",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v",
+    "start:api": "bun run apps/api/dist/main.js",
+    "cleanup": "./scripts/dev-cleanup.sh",
+    "cleanup:quick": "./scripts/dev-cleanup.sh --quick",
+    "cleanup:full": "./scripts/dev-cleanup.sh --full",
+    "cleanup:nx": "npx nx reset"
+  },
+  "devDependencies": {
+    "nx": "22.7.0",
+    "prettier": "^3.4.2"
+  },
+  "packageManager": "bun@1.1.42",
+  "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "mongodb": "6.18.0",
+    "slugify": "^1.6.6"
+  }
+}

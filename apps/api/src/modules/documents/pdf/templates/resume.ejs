@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume - <%= resume.contactInfo.name %></title>
+    <style>
+      body {
+        font-family: "Calibri", "Arial", sans-serif;
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0;
+        padding: 0;
+        color: #000;
+        background-color: #fff;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0 0 8px 0;
+        text-align: center;
+      }
+
+      h2 {
+        font-size: 15px;
+        font-weight: bold;
+        margin: 20px 0 10px 0;
+        text-transform: uppercase;
+        border-bottom: 1px solid #000;
+        padding-bottom: 3px;
+      }
+
+      h3 {
+        font-size: 14px;
+        font-weight: bold;
+        margin: 12px 0 6px 0;
+      }
+
+      .section {
+        margin-bottom: 24px;
+      }
+
+      p {
+        margin: 4px 0;
+      }
+
+      ul {
+        margin: 8px 0 12px 18px;
+        padding: 0;
+        list-style-type: disc;
+      }
+
+      li {
+        margin-bottom: 4px;
+        line-height: 1.4;
+      }
+
+      a {
+        color: #000;
+        text-decoration: none;
+      }
+      
+      a:hover {
+        color: #0066cc;
+        text-decoration: underline;
+      }
+
+      .contact-info {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      .contact-info h1 {
+        margin-bottom: 8px;
+      }
+
+      .contact-line {
+        margin: 4px 0;
+        font-size: 13px;
+      }
+
+      .contact-links {
+        margin-top: 6px;
+        font-size: 12px;
+      }
+
+      .job-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+        width: 100%;
+      }
+
+      .job-title {
+        font-weight: bold;
+        font-size: 14px;
+        flex: 1;
+        text-align: left;
+      }
+
+      .job-dates {
+        font-style: italic;
+        font-size: 13px;
+        font-weight: normal;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .company-location {
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .skills-category {
+        margin-bottom: 12px;
+      }
+
+      .skills-category strong {
+        font-size: 13px;
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .skills-list {
+        font-size: 12px;
+        line-height: 1.4;
+        margin-left: 0;
+      }
+
+      /* ATS-friendly formatting */
+      .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+      }
+
+      @media print {
+        body { 
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="contact-info">
+      <h1><%= resume.contactInfo.name %></h1>
+      <div class="contact-line">
+        <span><%= resume.contactInfo.location %></span> | 
+        <a href="mailto:<%= resume.contactInfo.email %>"><%= resume.contactInfo.email %></a> | 
+        <span><%= resume.contactInfo.phone %></span>
+      </div>
+      <% 
+        var linkElements = [];
+        if (resume.contactInfo.linkedin) {
+          var linkedinClean = resume.contactInfo.linkedin.replace('https://', '').replace('http://', '');
+          linkElements.push('<a href="' + resume.contactInfo.linkedin + '">' + linkedinClean + '</a>');
+        }
+        if (resume.contactInfo.github) {
+          var githubClean = resume.contactInfo.github.replace('https://', '').replace('http://', '');
+          linkElements.push('<a href="' + resume.contactInfo.github + '">' + githubClean + '</a>');
+        }
+        if (resume.contactInfo.personalWebsite) {
+          var websiteClean = resume.contactInfo.personalWebsite.replace('https://', '').replace('http://', '');
+          linkElements.push('<a href="' + resume.contactInfo.personalWebsite + '">' + websiteClean + '</a>');
+        }
+      %>
+      <% if (linkElements.length > 0) { %>
+      <div class="contact-links">
+        <%- linkElements.join(' | ') %>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="section">
+      <h2>Professional Experience</h2>
+      <% resume.experience.forEach(function(exp) { %>
+      <div class="job-header">
+        <span class="job-title"><%= exp.title %> - <%= exp.company %>, <%= exp.location %></span>
+        <span class="job-dates"><%= exp.dates %></span>
+      </div>
+      <ul>
+        <% exp.responsibilities.forEach(function(responsibility) { %>
+        <li><%= responsibility %></li>
+        <% }); %>
+      </ul>
+      <% }); %>
+    </div>
+
+    <% if (resume.projects && resume.projects.length > 0) { %>
+    <div class="section">
+      <h2>Key Projects</h2>
+      <% resume.projects.forEach(function(project) { %>
+      <h3><%= project.name %></h3>
+      <p><strong>Technologies:</strong> <%= project.technologies %></p>
+      <p><%= project.description %></p>
+      <% }); %>
+    </div>
+    <% } %>
+
+    <div class="section">
+      <h2>Education</h2>
+      <% resume.education.forEach(function(edu) { %>
+      <div class="job-header">
+        <span class="job-title"><%= edu.degree %> - <%= edu.institution %>, <%= edu.location %></span>
+        <span class="job-dates"><%= edu.dates %></span>
+      </div>
+      <% if (edu.achievements && edu.achievements.length > 0) { %>
+      <ul>
+        <% edu.achievements.forEach(function(achievement) { %>
+        <li><%= achievement %></li>
+        <% }); %>
+      </ul>
+      <% } %>
+      <% }); %>
+    </div>
+
+    <div class="section">
+      <h2>Technical Skills</h2>
+      <div class="skills-category">
+        <strong>Technical Skills:</strong>
+        <span class="skills-list"><%= resume.skills.technicalSkills.join(', ') %></span>
+      </div>
+      <div class="skills-category">
+        <strong>Development Practices & Methodologies:</strong>
+        <span class="skills-list"><%= resume.skills.developmentPracticesMethodologies.join(', ') %></span>
+      </div>
+      <% if (resume.skills.personalSkills && resume.skills.personalSkills.length > 0) { %>
+      <div class="skills-category">
+        <strong>Personal Skills:</strong>
+        <span class="skills-list"><%= resume.skills.personalSkills.join(', ') %></span>
+      </div>
+      <% } %>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,80 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "sharedGlobals": [
+      {
+        "env": "NODE_ENV"
+      },
+      {
+        "env": "NEXT_PUBLIC_*"
+      },
+      {
+        "env": "MONGODB_URI"
+      },
+      {
+        "env": "JWT_SECRET"
+      },
+      {
+        "env": "JWT_EXPIRATION"
+      },
+      {
+        "env": "CORS_ORIGIN"
+      },
+      {
+        "env": "API_PORT"
+      },
+      {
+        "env": "REDIS_*"
+      },
+      {
+        "env": "GOOGLE_GENERATIVE_AI_API_KEY"
+      },
+      {
+        "env": "NEXTAUTH_*"
+      }
+    ],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "{projectRoot}/dist/**",
+        "{projectRoot}/.next/**",
+        "!{projectRoot}/.next/cache/**",
+        "{projectRoot}/.output/**"
+      ],
+      "cache": true
+    },
+    "lint": {
+      "dependsOn": [
+        "^lint"
+      ],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": [
+        "^test"
+      ],
+      "cache": false
+    },
+    "dev": {
+      "cache": false
+    },
+    "start": {
+      "dependsOn": [
+        "build"
+      ],
+      "cache": true
+    },
+    "clean": {
+      "cache": false
+    }
+  },
+  "analytics": true
+}

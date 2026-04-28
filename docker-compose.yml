@@ -1,0 +1,72 @@
+# Docker Compose for development and production deployment
+#
+# Local development: docker compose up
+# Production: docker compose --env-file .env.production up
+# Dokploy: Deploy with environment variables set in Dokploy UI
+
+services:
+  # Backend API Service (NestJS with Bun)
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "${API_PORT:-8888}:8888"
+    environment:
+      API_PORT: ${API_PORT:-8888}
+      NODE_ENV: ${NODE_ENV:-production}
+
+      # Required
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+
+      # Redis (Upstash)
+      REDIS_URL: ${REDIS_URL:-}
+
+      # AI API Keys
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+
+      # CORS - configured via environment variable
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4000}
+    networks:
+      - resume-builder-network
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  # Frontend Web Service (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "${WEB_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      HOSTNAME: 0.0.0.0
+      PORT: 4000
+
+      # Required — Auth.js v5 uses AUTH_SECRET; NEXTAUTH_SECRET kept for compat
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:4000}
+      AUTH_URL: ${NEXTAUTH_URL:-http://localhost:4000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+
+      # Internal backend URL used by Next.js server (rewrites + SSR + NextAuth).
+      # Browser traffic is proxied through Next.js — backend is never exposed publicly.
+      INTERNAL_API_URL: ${INTERNAL_API_URL:-http://api:8888/api}
+    depends_on:
+      - api
+    networks:
+      - resume-builder-network
+    restart: unless-stopped
+
+networks:
+  resume-builder-network:
+    driver: bridge
+
+volumes:
+  uploads:
+    driver: local
