@@ -17,6 +17,7 @@ import { AiService } from '@modules/ai/ai.service';
 import { z } from 'zod';
 import { browserPool } from './browser-pool';
 import { AntiDetectionUtils } from './anti-detection.utils';
+import { buildFetchersFromSettings } from './fetchers';
 import {
   ScannedJob,
   ScannedJobDocument,
@@ -454,6 +455,14 @@ export class JobScannerService {
 
         return { jobs: [], scanId, cancelled: true };
       }
+      // PHASE 0: Free public APIs (no captchas, fast) — runs before scraping
+      const apiResult = await this.runApiFetchers(
+        settings,
+        userId,
+        scanId,
+        scanType,
+      );
+
       // PHASE 1: Startpage Search - Complete all scraping before moving to next phase
       await this.logScan(
         userId,
@@ -473,7 +482,7 @@ export class JobScannerService {
           scanType,
         );
 
-      const scrapedJobs = scrapingResult.jobs;
+      const scrapedJobs = [...apiResult.jobs, ...scrapingResult.jobs];
       const hadErrors =
         scrapingResult.errors > 0 || scrapingResult.captchas > 0;
 
@@ -754,6 +763,124 @@ export class JobScannerService {
       this.logger.error(`Job scan failed for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  private async runApiFetchers(
+    settings: JobScanSettingsDocument,
+    userId: string,
+    scanId: string,
+    scanType: ScanType,
+  ): Promise<{ jobs: Partial<ScannedJob>[]; errors: number }> {
+    const { fetchers, unrecognizedUrls } = buildFetchersFromSettings(settings);
+
+    if (unrecognizedUrls.length > 0) {
+      await this.logScan(
+        userId,
+        scanId,
+        LogLevel.WARNING,
+        `⚠️ Skipping ${unrecognizedUrls.length} unrecognized careers URL(s) (only Greenhouse / Lever / Ashby / Workable are supported): ${unrecognizedUrls.join(', ')}`,
+        'api-fetch',
+        undefined,
+        scanType,
+      );
+    }
+
+    if (fetchers.length === 0 || settings.searches.length === 0) {
+      return { jobs: [], errors: 0 };
+    }
+
+    await this.logScan(
+      userId,
+      scanId,
+      LogLevel.INFO,
+      `\n${'═'.repeat(40)}\n🌐 PHASE 0: PUBLIC APIs (${fetchers.length} sources × ${settings.searches.length} searches)`,
+      'api-fetch',
+      undefined,
+      scanType,
+    );
+
+    const allJobs: Partial<ScannedJob>[] = [];
+    let errorCount = 0;
+    const tasks: Array<() => Promise<void>> = [];
+
+    for (const search of settings.searches) {
+      for (const fetcher of fetchers) {
+        tasks.push(async () => {
+          if (await this.isScanCancelled(scanId)) return;
+          const result = await fetcher.fetch({
+            search,
+            timeFilter: settings.timeFilter,
+            maxResults: settings.maxResultsPerSearch,
+          });
+          errorCount += result.errors;
+
+          if (result.jobs.length > 0) {
+            allJobs.push(...result.jobs);
+            await this.logScan(
+              userId,
+              scanId,
+              LogLevel.SUCCESS,
+              `✅ ${fetcher.label}: ${result.jobs.length} job(s) for "${search.title}"`,
+              'api-fetch',
+              undefined,
+              scanType,
+            );
+          } else if (result.errors === 0) {
+            await this.logScan(
+              userId,
+              scanId,
+              LogLevel.INFO,
+              `📭 ${fetcher.label}: no matches for "${search.title}"`,
+              'api-fetch',
+              undefined,
+              scanType,
+            );
+          } else {
+            await this.logScan(
+              userId,
+              scanId,
+              LogLevel.WARNING,
+              `⚠️ ${fetcher.label}: fetch failed for "${search.title}"`,
+              'api-fetch',
+              undefined,
+              scanType,
+            );
+          }
+        });
+      }
+    }
+
+    // Cap concurrency so we don't blast every endpoint at once
+    const CONCURRENCY = 5;
+    let cursor = 0;
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, tasks.length) },
+      async () => {
+        while (cursor < tasks.length) {
+          const idx = cursor++;
+          try {
+            await tasks[idx]();
+          } catch (err) {
+            errorCount++;
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`API fetcher task crashed: ${msg}`);
+          }
+        }
+      },
+    );
+    await Promise.all(workers);
+
+    await this.logScan(
+      userId,
+      scanId,
+      errorCount > 0 ? LogLevel.WARNING : LogLevel.SUCCESS,
+      `🌐 Phase 0 Complete: ${allJobs.length} jobs from APIs (errors: ${errorCount})`,
+      'api-fetch',
+      undefined,
+      scanType,
+    );
+
+    return { jobs: allJobs, errors: errorCount };
   }
 
   private async sequentialScrapingWithCaptchaMinimization(
@@ -1057,13 +1184,37 @@ export class JobScannerService {
     let processedCount = 0;
     const PARALLEL_LIMIT = 5; // Process 5 jobs at a time
 
+    // Jobs from public APIs already arrive with title/company/location/datePosted
+    // and were filtered by query/workMode/timeFilter inside the fetcher — no need
+    // to open them in Playwright or re-run the AI relevance check. Saves minutes
+    // per scan when API sources return many jobs.
+    const apiJobs = jobs.filter((j) => (j.site ?? '').endsWith('-api'));
+    const scrapedJobs = jobs.filter((j) => !(j.site ?? '').endsWith('-api'));
+
+    if (apiJobs.length > 0) {
+      processedJobs.push(...apiJobs);
+      await this.logScan(
+        userId,
+        scanId,
+        LogLevel.SUCCESS,
+        `⚡ Skipped AI enrichment for ${apiJobs.length} API-sourced job(s) (already structured)`,
+        'ai-processing',
+        undefined,
+        scanType,
+      );
+    }
+
+    if (scrapedJobs.length === 0) {
+      return processedJobs;
+    }
+
     // Get all configured job titles for better matching
     const allJobTitles = settings.searches.map((s) => s.title);
 
     // Process jobs in batches of 5
     for (
       let batchStart = 0;
-      batchStart < jobs.length;
+      batchStart < scrapedJobs.length;
       batchStart += PARALLEL_LIMIT
     ) {
       // Check for cancellation at the start of each batch
@@ -1072,7 +1223,7 @@ export class JobScannerService {
           userId,
           scanId,
           LogLevel.WARNING,
-          `❌ AI processing cancelled at job ${batchStart + 1}/${jobs.length}`,
+          `❌ AI processing cancelled at job ${batchStart + 1}/${scrapedJobs.length}`,
           'ai-processing',
           undefined,
           scanType,
@@ -1080,8 +1231,8 @@ export class JobScannerService {
         break; // Return what we have processed so far
       }
 
-      const batchEnd = Math.min(batchStart + PARALLEL_LIMIT, jobs.length);
-      const batch = jobs.slice(batchStart, batchEnd);
+      const batchEnd = Math.min(batchStart + PARALLEL_LIMIT, scrapedJobs.length);
+      const batch = scrapedJobs.slice(batchStart, batchEnd);
 
       // Add delay between batches (not for first batch)
       if (batchStart > 0) {
@@ -1093,7 +1244,7 @@ export class JobScannerService {
         userId,
         scanId,
         LogLevel.INFO,
-        `🤖 Processing batch ${Math.floor(batchStart / PARALLEL_LIMIT) + 1}/${Math.ceil(jobs.length / PARALLEL_LIMIT)} (jobs ${batchStart + 1}-${batchEnd}/${jobs.length})`,
+        `🤖 Processing batch ${Math.floor(batchStart / PARALLEL_LIMIT) + 1}/${Math.ceil(scrapedJobs.length / PARALLEL_LIMIT)} (jobs ${batchStart + 1}-${batchEnd}/${scrapedJobs.length})`,
         'ai-processing',
         undefined,
         scanType,
@@ -1117,7 +1268,7 @@ export class JobScannerService {
               userId,
               scanId,
               LogLevel.WARNING,
-              `⚠️ [Job ${jobNumber}/${jobs.length}] Cannot access job page (may have been removed): ${this.truncateUrl(job.url || '')}`,
+              `⚠️ [Job ${jobNumber}/${scrapedJobs.length}] Cannot access job page (may have been removed): ${this.truncateUrl(job.url || '')}`,
               'ai-processing',
               undefined,
               scanType,
@@ -1138,7 +1289,7 @@ export class JobScannerService {
               userId,
               scanId,
               LogLevel.INFO,
-              `❌ [Job ${jobNumber}/${jobs.length}] Not a match: "${aiResult?.title || job.searchTitle}" - ${aiResult?.relevanceReason || 'Did not meet search criteria'}`,
+              `❌ [Job ${jobNumber}/${scrapedJobs.length}] Not a match: "${aiResult?.title || job.searchTitle}" - ${aiResult?.relevanceReason || 'Did not meet search criteria'}`,
               'ai-processing',
               undefined,
               scanType,
@@ -1150,7 +1301,7 @@ export class JobScannerService {
             userId,
             scanId,
             LogLevel.SUCCESS,
-            `✅ [Job ${jobNumber}/${jobs.length}] Match found: "${aiResult.title}" at ${aiResult.company}`,
+            `✅ [Job ${jobNumber}/${scrapedJobs.length}] Match found: "${aiResult.title}" at ${aiResult.company}`,
             'ai-processing',
             undefined,
             scanType,
@@ -1186,7 +1337,7 @@ export class JobScannerService {
             userId,
             scanId,
             LogLevel.WARNING,
-            `⚠️ [Job ${jobNumber}/${jobs.length}] Processing failed for ${truncatedUrl}: ${error.message}`,
+            `⚠️ [Job ${jobNumber}/${scrapedJobs.length}] Processing failed for ${truncatedUrl}: ${error.message}`,
             'ai-processing',
             undefined,
             scanType,
@@ -1210,7 +1361,7 @@ export class JobScannerService {
         userId,
         scanId,
         LogLevel.INFO,
-        `📊 AI Progress: ${processedCount}/${jobs.length} jobs processed. ${processedJobs.length} relevant matches found.`,
+        `📊 AI Progress: ${processedCount}/${scrapedJobs.length} scraped jobs processed. ${processedJobs.length} total matches (incl. ${apiJobs.length} from APIs).`,
         'ai-processing',
         undefined,
         scanType,

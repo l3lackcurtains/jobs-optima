@@ -32,6 +32,10 @@ import {
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  ALL_CURATED_COMPANIES,
+  COMPANY_CATEGORIES,
+} from "./curated-companies";
 
 interface SettingsFormData {
   searches: {
@@ -40,6 +44,9 @@ interface SettingsFormData {
     location?: string;
   }[];
   sites: string[];
+  apiCompanies: string[];
+  enableRemotive: boolean;
+  enableRemoteOk: boolean;
   timeFilter:
     | "past_hour"
     | "past_day"
@@ -52,6 +59,7 @@ interface SettingsFormData {
   scanIntervalHours: number;
   scanIntervalMinutes?: number;
 }
+
 
 const POPULAR_JOB_SITES = [
   { name: "greenhouse.io", category: "Supported Sites", recommended: true },
@@ -101,6 +109,9 @@ export function JobScannerSettingsDialog() {
       defaultValues: {
         searches: [],
         sites: [],
+        apiCompanies: [],
+        enableRemotive: false,
+        enableRemoteOk: false,
         timeFilter: "past_week",
         maxResultsPerSearch: 10,
         enableAutoScan: false,
@@ -119,6 +130,7 @@ export function JobScannerSettingsDialog() {
   });
 
   const watchSites = watch("sites");
+  const watchApiCompanies = watch("apiCompanies");
   const watchEnableAutoScan = watch("enableAutoScan");
 
   // Load settings data into form when available
@@ -127,6 +139,9 @@ export function JobScannerSettingsDialog() {
       const cleanSettings = {
         searches: settings.searches || [],
         sites: settings.sites || [],
+        apiCompanies: settings.apiCompanies || [],
+        enableRemotive: settings.enableRemotive ?? false,
+        enableRemoteOk: settings.enableRemoteOk ?? false,
         timeFilter: settings.timeFilter || "past_week",
         maxResultsPerSearch: settings.maxResultsPerSearch || 10,
         enableAutoScan: settings.enableAutoScan || false,
@@ -192,6 +207,27 @@ export function JobScannerSettingsDialog() {
       { shouldDirty: true },
     );
   };
+
+  const toggleCompany = (url: string) => {
+    const next = watchApiCompanies.includes(url)
+      ? watchApiCompanies.filter((u) => u !== url)
+      : [...watchApiCompanies, url];
+    setValue("apiCompanies", next, { shouldDirty: true });
+  };
+
+  const toggleCategory = (categoryId: string, allOn: boolean) => {
+    const category = COMPANY_CATEGORIES.find((c) => c.id === categoryId);
+    if (!category) return;
+    const categoryUrls = category.companies.map((c) => c.url);
+    const next = allOn
+      ? Array.from(new Set([...watchApiCompanies, ...categoryUrls]))
+      : watchApiCompanies.filter((u) => !categoryUrls.includes(u));
+    setValue("apiCompanies", next, { shouldDirty: true });
+  };
+
+  const enabledCount = watchApiCompanies.filter((u) =>
+    ALL_CURATED_COMPANIES.some((c) => c.url === u),
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -371,6 +407,152 @@ export function JobScannerSettingsDialog() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Direct API Sources */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">
+                    Direct API Sources
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Free public job APIs — fast, accurate, no captchas. Toggle
+                    aggregators or pick specific companies to track.
+                  </p>
+                </div>
+
+                {/* Aggregators */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">Remotive</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Curated remote tech jobs
+                      </p>
+                    </div>
+                    <Controller
+                      name="enableRemotive"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm">RemoteOK</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Remote-only job aggregator
+                      </p>
+                    </div>
+                    <Controller
+                      name="enableRemoteOk"
+                      control={control}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Curated company picker */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-sm">Companies to Track</Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Click to include companies. Their open jobs are fetched
+                        directly via public APIs — no scraping, no captchas.
+                      </p>
+                    </div>
+                    {enabledCount > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {enabledCount} selected
+                      </Badge>
+                    )}
+                  </div>
+
+                  {COMPANY_CATEGORIES.map((category) => {
+                    const categoryUrls = category.companies.map((c) => c.url);
+                    const allEnabled = categoryUrls.every((u) =>
+                      watchApiCompanies.includes(u),
+                    );
+                    const someEnabled = categoryUrls.some((u) =>
+                      watchApiCompanies.includes(u),
+                    );
+
+                    return (
+                      <div
+                        key={category.id}
+                        className="border rounded-lg p-3 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-semibold">
+                              {category.label}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {category.description}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() =>
+                              toggleCategory(category.id, !allEnabled)
+                            }
+                          >
+                            {allEnabled
+                              ? "Deselect all"
+                              : someEnabled
+                                ? "Select all"
+                                : "Select all"}
+                          </Button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {category.companies.map((company) => {
+                            const enabled = watchApiCompanies.includes(
+                              company.url,
+                            );
+                            return (
+                              <button
+                                key={company.url}
+                                type="button"
+                                onClick={() => toggleCompany(company.url)}
+                                className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                                  enabled
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background hover:bg-muted border-border"
+                                }`}
+                              >
+                                {company.name}
+                                <span
+                                  className={`ml-1.5 text-[9px] uppercase tracking-wide ${
+                                    enabled ? "opacity-70" : "opacity-50"
+                                  }`}
+                                >
+                                  {company.ats}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

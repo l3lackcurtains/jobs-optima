@@ -12,6 +12,9 @@ export interface JobScanSettings {
   userId: string;
   searches: SearchConfig[];
   sites: string[];
+  apiCompanies: string[];
+  enableRemotive: boolean;
+  enableRemoteOk: boolean;
   timeFilter: 'past_hour' | 'past_day' | 'past_week' | 'past_month' | 'past_year' | 'anytime';
   maxResultsPerSearch: number;
   enableAutoScan: boolean;

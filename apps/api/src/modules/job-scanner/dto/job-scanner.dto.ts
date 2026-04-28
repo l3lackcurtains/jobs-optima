@@ -42,6 +42,19 @@ export class UpdateJobScanSettingsDto {
   sites?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  apiCompanies?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  enableRemotive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  enableRemoteOk?: boolean;
+
+  @IsOptional()
   @IsEnum([
     'past_hour',
     'past_day',

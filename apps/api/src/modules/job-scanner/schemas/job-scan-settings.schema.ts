@@ -50,6 +50,20 @@ export class JobScanSettings {
   })
   sites: string[];
 
+  /**
+   * Careers URLs whose ATS we can talk to directly via public JSON APIs.
+   * Each URL is auto-classified (Greenhouse / Lever / Ashby / Workable);
+   * unrecognized URLs are skipped with a log entry.
+   */
+  @Prop({ type: [String], default: [] })
+  apiCompanies: string[];
+
+  @Prop({ default: false })
+  enableRemotive: boolean;
+
+  @Prop({ default: false })
+  enableRemoteOk: boolean;
+
   @Prop({
     type: String,
     enum: [
