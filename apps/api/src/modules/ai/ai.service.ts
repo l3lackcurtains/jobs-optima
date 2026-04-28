@@ -53,16 +53,27 @@ export class AiService {
   /**
    * Returns the platform Gemini Flash model. For background/system tasks
    * (e.g. job-scanner relevance scoring) that aren't billed against user
-   * credits. Throws if PLATFORM_GEMINI_API_KEY is not configured.
+   * credits.
+   *
+   * Falls back to AI_API_KEY when PLATFORM_GEMINI_API_KEY is unset, but only
+   * if AI_PROVIDER is gemini (or unset, since gemini is the default) — other
+   * providers can't power a Gemini call. Throws if neither key is available.
    */
   getPlatformModel(): LanguageModel {
     const platformKey = process.env.PLATFORM_GEMINI_API_KEY;
-    if (!platformKey) {
-      throw new BadRequestException(
-        'Platform AI is not configured. Set PLATFORM_GEMINI_API_KEY.',
-      );
+    if (platformKey) {
+      return createGoogleGenerativeAI({ apiKey: platformKey })(PLATFORM_MODEL);
     }
-    return createGoogleGenerativeAI({ apiKey: platformKey })(PLATFORM_MODEL);
+
+    const provider = (process.env.AI_PROVIDER ?? 'gemini').toLowerCase();
+    const fallbackKey = process.env.AI_API_KEY;
+    if (provider === 'gemini' && fallbackKey) {
+      return createGoogleGenerativeAI({ apiKey: fallbackKey })(PLATFORM_MODEL);
+    }
+
+    throw new BadRequestException(
+      'Platform AI is not configured. Set PLATFORM_GEMINI_API_KEY (or AI_API_KEY with AI_PROVIDER=gemini).',
+    );
   }
 
   /**

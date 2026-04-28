@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Terminal,
   Activity,
@@ -67,6 +67,16 @@ export function ScanStatusDialog({
   const { data: logsData, refetch: refetchLogs } = useLatestScanLogs();
   const clearLogs = useClearScanLogs();
   const cancelScan = useCancelScan();
+
+  // Refetch every time the dialog opens — useLatestScanLogs's auto-polling only
+  // kicks in *after* a fetch shows a scan in progress, so without this the
+  // dialog would render stale data captured at page mount.
+  useEffect(() => {
+    if (open) {
+      refetchSettings();
+      refetchLogs();
+    }
+  }, [open, refetchSettings, refetchLogs]);
 
   const autoLogs = logsData?.auto as ScanLogData | undefined;
   const manualLogs = logsData?.manual as ScanLogData | undefined;

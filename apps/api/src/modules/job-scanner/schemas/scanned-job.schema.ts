@@ -16,7 +16,9 @@ export class ScannedJob {
   @Prop({ required: true })
   searchTitle: string;
 
-  @Prop({ required: true, unique: true })
+  // Uniqueness is per-user (compound index below) — same URL can be tracked by
+  // multiple users, and re-scanning the same URL for one user is a no-op.
+  @Prop({ required: true })
   url: string;
 
   @Prop({ required: true })
@@ -74,5 +76,5 @@ export const ScannedJobSchema = SchemaFactory.createForClass(ScannedJob);
 // Create compound index for efficient querying
 ScannedJobSchema.index({ userId: 1, datePosted: -1, scrapedAt: -1 });
 ScannedJobSchema.index({ userId: 1, scrapedAt: -1 });
-ScannedJobSchema.index({ userId: 1, url: 1 });
+ScannedJobSchema.index({ userId: 1, url: 1 }, { unique: true });
 ScannedJobSchema.index({ userId: 1, isFavorited: 1 });

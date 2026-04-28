@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  OnModuleInit,
   forwardRef,
   Inject,
   NotFoundException,
@@ -40,7 +41,7 @@ import {
 import { AI_CONFIG } from '@modules/ai/ai.constants';
 
 @Injectable()
-export class JobScannerService {
+export class JobScannerService implements OnModuleInit {
   private readonly logger = new Logger(JobScannerService.name);
   private readonly activeScansCancellation = new Map<string, boolean>(); // Track cancellation requests by scanId
   private readonly USER_AGENTS = [
@@ -75,6 +76,35 @@ export class JobScannerService {
     private scheduler: JobScannerScheduler,
     private aiService: AiService,
   ) {}
+
+  /**
+   * One-time migration: the original schema had a global unique index on `url`,
+   * which prevented two different users from tracking the same job. The
+   * compound `{ userId, url }` index replaces it. Mongoose only adds new
+   * indexes — old ones must be dropped explicitly.
+   */
+  async onModuleInit() {
+    try {
+      const collection = this.scannedJobModel.collection;
+      const indexes = await collection.indexes();
+      const legacy = indexes.find(
+        (idx) =>
+          idx.name === 'url_1' &&
+          Object.keys(idx.key ?? {}).length === 1 &&
+          idx.key?.url === 1 &&
+          idx.unique,
+      );
+      if (legacy) {
+        await collection.dropIndex('url_1');
+        this.logger.log(
+          'Dropped legacy unique index `url_1` (replaced by compound `{ userId, url }`)',
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Index migration check failed: ${msg}`);
+    }
+  }
 
   async getUserSettings(userId: string): Promise<JobScanSettingsDocument> {
     let settings = await this.jobScanSettingsModel
@@ -1398,27 +1428,46 @@ export class JobScannerService {
         );
       }
 
-      const savedJobs = await this.scannedJobModel.insertMany(
-        uniqueNewJobs.map((job) => {
-          // Clean up the job data before saving
-          const cleanJob: any = {
-            ...job,
-            userId,
-            scrapedAt: new Date(),
-            isFavorited: false,
-          };
+      const docsToInsert = uniqueNewJobs.map((job) => {
+        // Clean up the job data before saving
+        const cleanJob: any = {
+          ...job,
+          userId,
+          scrapedAt: new Date(),
+          isFavorited: false,
+        };
 
-          // Ensure datePosted is either a valid Date or undefined
-          if (cleanJob.datePosted) {
-            const date = new Date(cleanJob.datePosted);
-            cleanJob.datePosted = isNaN(date.getTime()) ? undefined : date;
-          }
+        // Ensure datePosted is either a valid Date or undefined
+        if (cleanJob.datePosted) {
+          const date = new Date(cleanJob.datePosted);
+          cleanJob.datePosted = isNaN(date.getTime()) ? undefined : date;
+        }
 
-          return cleanJob;
-        }),
-      );
+        return cleanJob;
+      });
 
-      return savedJobs as any as ScannedJob[];
+      try {
+        // ordered: false → continue inserting on duplicate-key, return what
+        // succeeded. Useful when the dedup pre-check races with a concurrent
+        // scan or when an old global unique index still exists.
+        const savedJobs = await this.scannedJobModel.insertMany(docsToInsert, {
+          ordered: false,
+        });
+        return savedJobs as any as ScannedJob[];
+      } catch (err: any) {
+        // Bulk write errors with `ordered: false` still throw, but
+        // err.insertedDocs / err.result.insertedIds reflect what got through.
+        const isBulkError = err?.code === 11000 || err?.writeErrors;
+        if (isBulkError) {
+          const inserted = (err.insertedDocs ?? []) as any[];
+          const skipped = docsToInsert.length - inserted.length;
+          this.logger.warn(
+            `Saved ${inserted.length}/${docsToInsert.length} jobs; ${skipped} skipped as duplicates`,
+          );
+          return inserted as any as ScannedJob[];
+        }
+        throw err;
+      }
     } catch (error: any) {
       this.logger.error('Error saving jobs to database:', error);
       throw error;
