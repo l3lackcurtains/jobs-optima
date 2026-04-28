@@ -177,13 +177,11 @@ export function useScanLogs(scanId: string | null, enabled: boolean = true) {
       scanId ? jobScannerAPI.getScanLogs(scanId) : Promise.resolve([]),
     enabled: enabled && !!scanId,
     refetchInterval: (query) => {
-      const logs = query.state.data as any[] | undefined;
-      // Stop polling once the scan is complete (last log indicates completion)
-      const lastLog = logs?.[logs.length - 1];
-      const isDone =
-        lastLog?.phase === "complete" ||
-        lastLog?.message?.includes("Complete") ||
-        lastLog?.message?.includes("No new jobs");
+      const logs = query.state.data as { phase?: string }[] | undefined;
+      // Only stop on the final completion log (phase: 'complete'). The previous
+      // checks matched any message containing "Complete", which fires after every
+      // phase ("Phase 1 Complete: ...") and stopped polling early.
+      const isDone = logs?.some((l) => l.phase === "complete") ?? false;
       return isDone ? false : 500;
     },
   });

@@ -533,8 +533,6 @@ export class JobScannerService {
         return { jobs: [], scanId, cancelled: true };
       }
 
-      // Add delay between phases
-      await this.randomDelay(1000, 2000);
 
       // PHASE 2: Deduplication - Process all deduplication before extraction
       await this.logScan(
@@ -588,8 +586,6 @@ export class JobScannerService {
         return { jobs: [], scanId, cancelled: true };
       }
 
-      // Add delay between phases
-      await this.randomDelay(1000, 2000);
 
       if (newJobs.length === 0) {
         await this.logScan(
@@ -653,8 +649,6 @@ export class JobScannerService {
         scanType,
       );
 
-      // Add delay between phases
-      await this.randomDelay(1000, 2000);
 
       if (processedJobs.length === 0) {
         await this.logScan(

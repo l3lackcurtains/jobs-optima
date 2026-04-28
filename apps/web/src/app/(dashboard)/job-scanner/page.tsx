@@ -206,14 +206,21 @@ function JobScannerPage() {
 
   const handleSaveToJobs = (job: ScannedJob, e: React.MouseEvent) => {
     e.stopPropagation();
+    // If already saved, the bookmark-check icon navigates to the job.
     if (job.savedJobId) {
       router.push(`/jobs/${job.savedJobId}`);
       return;
     }
+    // First save: stay on this page; the bookmark icon flips to BookmarkCheck
+    // and the user can click it again to open the saved job.
     saveJob.mutate(job._id, {
       onSuccess: (data) => {
-        toast.success("Job saved — opening job page...");
-        router.push(`/jobs/${data.job._id}`);
+        toast.success("Job saved", {
+          action: {
+            label: "View",
+            onClick: () => router.push(`/jobs/${data.job._id}`),
+          },
+        });
       },
     });
   };

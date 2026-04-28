@@ -67,6 +67,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Expose to host so `npm run dev:api` (running outside Docker) can connect.
+    # Inside the compose network, services still reach Redis at host `redis`.
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - resume-builder-network
     volumes:
