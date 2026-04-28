@@ -21,8 +21,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
 
-      # Redis (Upstash)
-      REDIS_URL: ${REDIS_URL:-}
+      # Redis
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
 
       # AI API Keys
       AI_API_KEY: ${AI_API_KEY:-}
@@ -34,6 +34,8 @@ services:
       - resume-builder-network
     volumes:
       - uploads:/app/uploads
+    depends_on:
+      - redis
     restart: unless-stopped
 
   # Frontend Web Service (Next.js)
@@ -63,10 +65,20 @@ services:
       - resume-builder-network
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    networks:
+      - resume-builder-network
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
 networks:
   resume-builder-network:
     driver: bridge
 
 volumes:
   uploads:
+    driver: local
+  redis-data:
     driver: local
