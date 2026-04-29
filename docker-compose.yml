@@ -27,6 +27,8 @@ services:
       # AI API Keys
       AI_API_KEY: ${AI_API_KEY:-}
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      AI_MODEL: ${AI_MODEL:-}
+      PLATFORM_GEMINI_API_KEY: ${PLATFORM_GEMINI_API_KEY:-}
 
       # CORS - configured via environment variable
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4000}
