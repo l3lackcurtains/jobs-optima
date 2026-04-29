@@ -20,13 +20,9 @@ Jobs Optima is a self-hostable, AI-powered job search platform that optimizes yo
 ## Demo
 
 <p align="center">
-  <img src="docs/assets/jobs-optima-screenshot.png" alt="Jobs Optima Dashboard" width="80%">
-</p>
-
-<p align="center">
-  <video src="docs/assets/jobs-optima-demo.mp4" poster="docs/assets/jobs-optima-screenshot.png" controls playsinline width="80%">
-    Your browser does not support the video tag.
-  </video>
+  <img src="docs/assets/jobs-optima-demo.gif" alt="Jobs Optima Demo" width="80%">
+  <br>
+  <a href="docs/assets/jobs-optima-demo.mp4">▶ Watch with sound</a>
 </p>
 
 ## Why Jobs Optima
