@@ -126,15 +126,15 @@ export class AiService {
       case AIProvider.ANTHROPIC:
         return createAnthropic({ apiKey })(model);
       case AIProvider.DEEPSEEK:
-        return createDeepSeek({ apiKey })(model);
+        return createDeepSeek({ apiKey })(model) as LanguageModel;
       case AIProvider.XAI:
-        return createXai({ apiKey })(model);
+        return createXai({ apiKey })(model) as LanguageModel;
       case AIProvider.MISTRAL:
-        return createMistral({ apiKey })(model);
+        return createMistral({ apiKey })(model) as LanguageModel;
       case AIProvider.GROQ:
-        return createGroq({ apiKey })(model);
+        return createGroq({ apiKey })(model) as LanguageModel;
       case AIProvider.OPENROUTER:
-        return createOpenRouter({ apiKey })(model);
+        return createOpenRouter({ apiKey })(model) as unknown as LanguageModel;
       case AIProvider.GEMINI:
       default:
         return createGoogleGenerativeAI({ apiKey })(model);
