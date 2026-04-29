@@ -28,6 +28,7 @@ services:
       AI_API_KEY: ${AI_API_KEY:-}
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       AI_MODEL: ${AI_MODEL:-}
+      AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-20}
       PLATFORM_GEMINI_API_KEY: ${PLATFORM_GEMINI_API_KEY:-}
 
       # CORS - configured via environment variable
