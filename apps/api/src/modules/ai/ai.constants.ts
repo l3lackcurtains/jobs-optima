@@ -2,12 +2,22 @@ export enum AIProvider {
   GEMINI = 'gemini',
   OPENAI = 'openai',
   ANTHROPIC = 'anthropic',
+  DEEPSEEK = 'deepseek',
+  XAI = 'xai',
+  MISTRAL = 'mistral',
+  GROQ = 'groq',
+  OPENROUTER = 'openrouter',
 }
 
 export const DEFAULT_MODELS: Record<AIProvider, string> = {
   [AIProvider.GEMINI]: 'gemini-2.5-flash',
   [AIProvider.OPENAI]: 'gpt-4o',
   [AIProvider.ANTHROPIC]: 'claude-sonnet-4-5',
+  [AIProvider.DEEPSEEK]: 'deepseek-chat',
+  [AIProvider.XAI]: 'grok-3-fast',
+  [AIProvider.MISTRAL]: 'mistral-large-latest',
+  [AIProvider.GROQ]: 'llama-4-scout-17b-16e-instruct',
+  [AIProvider.OPENROUTER]: 'google/gemini-2.5-flash',
 };
 
 /**
@@ -52,6 +62,50 @@ export const ALLOWED_MODELS: Record<AIProvider, readonly string[]> = {
     'claude-opus-4-5',
     'claude-opus-4-1',
     'claude-sonnet-4-0',
+  ],
+  [AIProvider.DEEPSEEK]: [
+    'deepseek-chat',
+    'deepseek-reasoner',
+  ],
+  [AIProvider.XAI]: [
+    'grok-3-fast',
+    'grok-3-mini-fast',
+    'grok-3',
+    'grok-3-mini',
+    'grok-2-vision',
+    'grok-2',
+  ],
+  [AIProvider.MISTRAL]: [
+    'mistral-large-latest',
+    'mistral-small-latest',
+    'mistral-saba-latest',
+    'pixtral-large-latest',
+    'codestral-latest',
+  ],
+  [AIProvider.GROQ]: [
+    'llama-4-scout-17b-16e-instruct',
+    'llama-4-maverick-17b-128e-instruct',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+    'qwen-3-235b-a22b-instruct',
+    'deepseek-r1-distill-qwen-32b',
+    'deepseek-r1-distill-llama-70b',
+    'gemma-3-27b-it',
+  ],
+  [AIProvider.OPENROUTER]: [
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro',
+    'openai/gpt-4.1',
+    'openai/gpt-4o',
+    'openai/o3-mini',
+    'anthropic/claude-sonnet-4-6',
+    'anthropic/claude-opus-4-7',
+    'deepseek/deepseek-chat',
+    'deepseek/deepseek-r1',
+    'x-ai/grok-3',
+    'mistralai/mistral-large',
+    'meta-llama/llama-4-maverick',
+    'qwen/qwen3-235b-a22b',
   ],
 };
 

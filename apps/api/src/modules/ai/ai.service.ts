@@ -8,6 +8,11 @@ import { Model } from 'mongoose';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createXai } from '@ai-sdk/xai';
+import { createMistral } from '@ai-sdk/mistral';
+import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateObject, type LanguageModel } from 'ai';
 import {
   KeywordsExtractorService,
@@ -120,6 +125,16 @@ export class AiService {
         return createOpenAI({ apiKey })(model);
       case AIProvider.ANTHROPIC:
         return createAnthropic({ apiKey })(model);
+      case AIProvider.DEEPSEEK:
+        return createDeepSeek({ apiKey })(model);
+      case AIProvider.XAI:
+        return createXai({ apiKey })(model);
+      case AIProvider.MISTRAL:
+        return createMistral({ apiKey })(model);
+      case AIProvider.GROQ:
+        return createGroq({ apiKey })(model);
+      case AIProvider.OPENROUTER:
+        return createOpenRouter({ apiKey })(model);
       case AIProvider.GEMINI:
       default:
         return createGoogleGenerativeAI({ apiKey })(model);
